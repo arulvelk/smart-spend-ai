@@ -1,0 +1,5 @@
+functions-framework==3.10.2
+google-cloud-bigquery==3.47.0
+google-cloud-pubsub==2.43.0
+google-auth==2.62.0
+requests==2.34.2

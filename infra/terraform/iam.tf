@@ -75,9 +75,10 @@ resource "google_service_account" "build" {
 
 resource "google_project_iam_member" "build_roles" {
   for_each = toset([
-    "roles/artifactregistry.writer", # push images
-    "roles/logging.logWriter",       # build logs
-    "roles/storage.objectViewer",    # read uploaded source from the build bucket
+    "roles/artifactregistry.writer",   # push images
+    "roles/logging.logWriter",         # build logs
+    "roles/storage.objectViewer",      # read uploaded source from the build bucket
+    "roles/cloudbuild.builds.builder", # Cloud Functions gen2 builds (buildpacks)
   ])
   project = var.project_id
   role    = each.value

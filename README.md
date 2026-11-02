@@ -19,9 +19,9 @@ See [docs/architecture.md](docs/architecture.md) for the diagram, data model, co
 | `data/` | Synthetic generator, receipt renderer, and BigQuery loader, with tests | ✅ step 1 |
 | `agent/` | LangGraph advisor agent: Gemini intent routing, BigQuery tools, categorizer, receipt parser | ✅ step 2 |
 | `api/` | FastAPI service on Cloud Run (also hosts the agent) | ✅ step 2 |
-| `ui/` | Next.js dashboard on Cloud Run | step 3 |
-| `functions/` | Daily ingest and budget-alert Cloud Functions | step 3 |
-| `scripts/` | `bootstrap.ps1` (one-time setup) and `deploy_api.ps1` (build and deploy to Cloud Run) | ✅ |
+| `ui/` | Next.js dashboard on Cloud Run, calling the private API through a server-side proxy | ✅ step 3 |
+| `functions/` | Daily Cloud Function run by Cloud Scheduler: ingest, categorize, budget alerts | ✅ step 3 |
+| `scripts/` | `bootstrap.ps1` (one-time setup), `deploy_api.ps1`, `deploy_jobs.ps1`, `deploy_ui.ps1` | ✅ |
 
 ## Prerequisites (Windows)
 
@@ -72,6 +72,13 @@ uv run python -m smartspend_agent --project $P   # check that Gemini on Vertex A
 `deploy_api.ps1` builds with Cloud Build, deploys a private Cloud Run service, categorizes the pending transactions, prints Gemini's accuracy against ground truth, and asks the advisor a question. See [api/README.md](api/README.md) for the endpoints and how to run the API locally.
 
 Run all Python tests with `uv run pytest`. They use fakes and need no GCP access.
+
+## Deploy the daily job and the UI
+
+```powershell
+./scripts/deploy_jobs.ps1 -ProjectId $P                          # Cloud Function + Cloud Scheduler (06:00 daily), runs once now
+./scripts/deploy_ui.ps1 -ProjectId $P -DemoPassword "pick-one"   # public Next.js site on Cloud Run
+```
 
 ## Working with the data locally
 

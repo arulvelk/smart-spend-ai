@@ -25,3 +25,4 @@ data/out/
 .env
 .env.*
 !.env.example
+*.tsbuildinfo

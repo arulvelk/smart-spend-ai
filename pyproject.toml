@@ -7,5 +7,5 @@ exclude = ["data"]
 dev = ["pytest>=8", "httpx>=0.27"]
 
 [tool.pytest.ini_options]
-testpaths = ["agent/tests", "api/tests"]
+testpaths = ["agent/tests", "api/tests", "functions/tests"]
 pythonpath = ["agent/tests"]
