@@ -67,8 +67,11 @@ Write-Host "==> Scheduling it: '$Schedule' ($TimeZone)"
 $schedulerArgs = @("--project", $ProjectId, "--location", $Region, "--schedule", $Schedule, "--time-zone", $TimeZone,
     "--uri", $FnUrl, "--http-method", "POST", "--oidc-service-account-email", $SchedulerSa,
     "--oidc-token-audience", $FnUrl, "--attempt-deadline", "320s")
-gcloud scheduler jobs describe $Fn --project $ProjectId --location $Region 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
+# `list` instead of `describe`: Windows PowerShell treats a native command's stderr as a
+# terminating error under $ErrorActionPreference = "Stop", so a "not found" would abort the script.
+$existing = gcloud scheduler jobs list --project $ProjectId --location $Region --format "value(name)" |
+    Where-Object { $_ -like "*/jobs/$Fn" }
+if ($existing) {
     Invoke-Step { gcloud scheduler jobs update http $Fn @schedulerArgs }
 } else {
     Invoke-Step { gcloud scheduler jobs create http $Fn @schedulerArgs }
