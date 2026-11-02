@@ -1,0 +1,22 @@
+[
+  {"name": "receipt_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "user_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "gcs_uri", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "uploaded_at", "type": "TIMESTAMP", "mode": "REQUIRED"},
+  {"name": "merchant_name", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "receipt_date", "type": "DATE", "mode": "NULLABLE"},
+  {"name": "subtotal", "type": "NUMERIC", "mode": "NULLABLE"},
+  {"name": "tax", "type": "NUMERIC", "mode": "NULLABLE"},
+  {"name": "tip", "type": "NUMERIC", "mode": "NULLABLE"},
+  {"name": "total", "type": "NUMERIC", "mode": "NULLABLE"},
+  {"name": "line_items", "type": "RECORD", "mode": "REPEATED", "fields": [
+    {"name": "description", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "quantity", "type": "FLOAT", "mode": "NULLABLE"},
+    {"name": "unit_price", "type": "NUMERIC", "mode": "NULLABLE"},
+    {"name": "amount", "type": "NUMERIC", "mode": "NULLABLE"}
+  ]},
+  {"name": "category", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "parse_model", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "parse_confidence", "type": "FLOAT", "mode": "NULLABLE"},
+  {"name": "matched_transaction_id", "type": "STRING", "mode": "NULLABLE"}
+]

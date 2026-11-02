@@ -1,0 +1,4 @@
+project_id         = "smartspend-ai-123456"
+region             = "us-central1"
+billing_account_id = "XXXXXX-XXXXXX-XXXXXX" # gcloud billing accounts list
+budget_amount_usd  = 50
