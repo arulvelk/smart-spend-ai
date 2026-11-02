@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { api, type ReceiptResult } from "@/lib/api";
+import { api, type ReceiptResult, type Txn } from "@/lib/api";
+import { useLoad } from "./useLoad";
+import { accountLabel } from "./AddData";
 import { money } from "@/lib/format";
 
 export default function Receipts() {
@@ -10,11 +12,28 @@ export default function Receipts() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
+  const [accountId, setAccountId] = useState("");
+  const [created, setCreated] = useState<Txn | null>(null);
+  const accounts = useLoad(() => api.accounts(), []);
+
+  async function createTxn() {
+    if (!result || !accountId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setCreated(await api.receiptToTransaction(result.receipt_id, accountId));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function upload(file: File | undefined) {
     if (!file) return;
     setError(null);
     setResult(null);
+    setCreated(null);
     setPreview(URL.createObjectURL(file));
     setBusy(true);
     try {
@@ -73,8 +92,19 @@ export default function Receipts() {
               <p style={{ fontSize: 14 }}>
                 {result.matched_transaction
                   ? <>Matched to card transaction <span className="raw">{result.matched_transaction.raw_description}</span> on {result.matched_transaction.txn_date}; its category is now {p.category}.</>
-                  : <span className="muted">No card transaction with this total within 3 days of the receipt date.</span>}
+                  : created
+                    ? <><span style={{ color: "var(--good)" }}>✓</span> Added as a new {money(Number(created.amount))} transaction on {created.txn_date}.</>
+                    : <span className="muted">No card transaction with this total within 3 days of the receipt date.</span>}
               </p>
+              {!result.matched_transaction && !created && (
+                <div className="form-row">
+                  <select value={accountId} onChange={(e) => setAccountId(e.target.value)} aria-label="Account">
+                    <option value="">Paid with…</option>
+                    {(accounts.data?.items ?? []).map((a) => <option key={a.account_id} value={a.account_id}>{accountLabel(a)}</option>)}
+                  </select>
+                  <button className="btn primary" onClick={createTxn} disabled={!accountId || busy}>Add as transaction</button>
+                </div>
+              )}
             </div>
           )}
         </div>

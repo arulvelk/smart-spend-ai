@@ -134,3 +134,12 @@ td.r, th.r { text-align: right; }
 .tooltip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 14px rgb(0 0 0 / 0.12); }
 .tooltip b { display: block; margin-bottom: 2px; }
 footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
+.form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.form-row input[type="text"] { min-width: 0; flex: 1 1 160px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.form-grid .wide { grid-column: 1 / -1; }
+.form-grid input, .form-grid select { width: 100%; color: var(--ink); }
+input[type="date"], input[type="number"] { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+.cat-select { border: 0; background: var(--surface-2); border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }

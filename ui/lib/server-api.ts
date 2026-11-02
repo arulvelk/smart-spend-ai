@@ -21,7 +21,12 @@ async function authHeader(): Promise<Record<string, string>> {
 }
 
 // Only these API paths are reachable through the proxy.
-const ALLOWED = /^(health|transactions|analytics\/(categories|monthly)|budgets\/status|alerts|chat|categorize(\/accuracy)?|receipts)$/;
+const ID = "[A-Za-z0-9_-]{1,64}";
+const ALLOWED = new RegExp(
+  "^(health|transactions|analytics/(categories|monthly)|budgets/status|alerts|chat|categorize(/accuracy)?" +
+    `|transactions/${ID}/category|receipts|receipts/${ID}/transaction|accounts|statements/(preview|import)` +
+    `|imports|imports/${ID}/undo)$`,
+);
 
 export async function forward(req: Request, path: string[]): Promise<Response> {
   const joined = path.join("/");

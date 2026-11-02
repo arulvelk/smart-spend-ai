@@ -3,8 +3,9 @@
 | Tab | What it shows |
 |---|---|
 | Overview | Month-to-date spend, last month, budgets over limit, Gemini accuracy; 12-month trend; budget progress; spend by category; alerts from the daily job; top merchants |
-| Transactions | Messy bank descriptor → clean merchant and category, with the source (Gemini plus confidence, receipt, or seed); a button that runs Gemini categorization |
-| Receipts | Upload a photo; Gemini extracts line items; the totals are checked; the receipt is matched to the card transaction |
+| Transactions | Messy bank descriptor → clean merchant and category, with the source (Gemini plus confidence, receipt, seed or you); filter by account; change any category inline; a button that runs Gemini categorization |
+| Add data | Upload a CSV or PDF statement and review every row before importing (duplicates are pre-unchecked); undo an import; add a transaction by hand; manage accounts and cards |
+| Receipts | Upload a photo; Gemini extracts line items; the totals are checked; the receipt is matched to the card transaction, or added as a new one |
 | Advisor | Chat with the LangGraph agent, with a "How I answered" panel showing the intent, date range and BigQuery data used |
 
 ## How it talks to the API

@@ -58,6 +58,7 @@ class Txn:
             "category_confidence": 1.0 if categorized else None,
             "source": self.source,
             "ingested_at": ingested_at.isoformat(),
+            "import_id": None,
         }
 
     def label_row(self) -> dict:
@@ -194,6 +195,17 @@ def generate_range(start: date, end: date, *, seed: int = 42, source: str = "bac
     while d <= end:
         yield from generate_day(d, seed=seed, end=end, source=source)
         d += timedelta(days=1)
+
+
+DEMO_ACCOUNTS = [
+    {"account_id": "chk-001", "name": "Demo Everyday Checking", "type": "checking", "institution": "Demo Bank", "last4": "0021"},
+    {"account_id": "cc-001", "name": "Demo Rewards Visa", "type": "credit_card", "institution": "Demo Bank", "last4": "4417"},
+]
+
+
+def account_rows(created_at: datetime) -> list[dict]:
+    """The two synthetic accounts the backfill and the daily job write to."""
+    return [{**a, "user_id": USER_ID, "is_demo": True, "created_at": created_at.isoformat()} for a in DEMO_ACCOUNTS]
 
 
 def budget_rows(effective_from: date, budgets: dict[str, float] | None = None) -> list[dict]:

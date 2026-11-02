@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { api, type Txn } from "@/lib/api";
 import { CATEGORIES, money, monthLabel, recentMonths } from "@/lib/format";
 import { useLoad } from "./useLoad";
 
@@ -9,6 +9,7 @@ function Source({ source, confidence }: { source: string | null; confidence: num
   if (!source) return <span className="src">pending</span>;
   if (source === "gemini") return <span className="src">Gemini {confidence != null ? `${Math.round(confidence * 100)}%` : ""}</span>;
   if (source === "receipt") return <span className="src">from receipt</span>;
+  if (source === "user") return <span className="src">set by you</span>;
   return <span className="src">seed</span>;
 }
 
@@ -18,7 +19,19 @@ export default function Transactions() {
   const [category, setCategory] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const txns = useLoad(() => api.transactions(month, category || undefined), [month, category]);
+  const [account, setAccount] = useState("");
+  const accounts = useLoad(() => api.accounts(), []);
+  const txns = useLoad(() => api.transactions(month, category || undefined, account || undefined), [month, category, account]);
+  const names = Object.fromEntries((accounts.data?.items ?? []).map((a) => [a.account_id, a.name]));
+
+  async function recategorize(t: Txn, c: string) {
+    try {
+      await api.setCategory(t.transaction_id, c);
+      txns.reload();
+    } catch (e) {
+      setNote((e as Error).message);
+    }
+  }
   const pending = txns.data?.items.filter((t) => !t.category).length ?? 0;
 
   async function categorize() {
@@ -45,6 +58,10 @@ export default function Transactions() {
           <option value="">All categories</option>
           {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
         </select>
+        <select value={account} onChange={(e) => setAccount(e.target.value)} aria-label="Account">
+          <option value="">All accounts</option>
+          {(accounts.data?.items ?? []).map((a) => <option key={a.account_id} value={a.account_id}>{a.name}</option>)}
+        </select>
         <span className="spacer" />
         {note && <span className="muted" style={{ fontSize: 13 }}>{note}</span>}
         <button className="btn primary" onClick={categorize} disabled={busy}>
@@ -65,10 +82,14 @@ export default function Transactions() {
                   <td className="num" style={{ whiteSpace: "nowrap" }}>{t.txn_date}</td>
                   <td>
                     <div>{t.merchant_name ?? <span className="muted">—</span>}</div>
-                    <div className="raw">{t.raw_description}</div>
+                    <div className="raw">{t.raw_description}{t.account_id && names[t.account_id] ? ` · ${names[t.account_id]}` : ""}</div>
                   </td>
                   <td>
-                    {t.category ? <span className="chip">{t.category}</span> : <span className="muted">Uncategorized</span>}
+                    <select className="cat-select" value={t.category ?? ""} aria-label={`Category for ${t.raw_description}`}
+                      onChange={(e) => e.target.value && recategorize(t, e.target.value)}>
+                      {!t.category && <option value="">Uncategorized</option>}
+                      {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    </select>
                     <Source source={t.category_source} confidence={t.category_confidence} />
                   </td>
                   <td className={`r num ${t.direction === "credit" ? "credit" : ""}`}>

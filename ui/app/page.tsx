@@ -5,8 +5,9 @@ import Overview from "@/components/Overview";
 import Transactions from "@/components/Transactions";
 import Receipts from "@/components/Receipts";
 import Advisor from "@/components/Advisor";
+import AddData from "@/components/AddData";
 
-const TABS = ["Overview", "Transactions", "Receipts", "Advisor"] as const;
+const TABS = ["Overview", "Transactions", "Add data", "Receipts", "Advisor"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
       </header>
       {tab === "Overview" && <Overview />}
       {tab === "Transactions" && <Transactions />}
+      {tab === "Add data" && <AddData />}
       {tab === "Receipts" && <Receipts />}
       {tab === "Advisor" && <Advisor />}
       <footer>All data is synthetic. Built to demonstrate a serverless AI architecture on Google Cloud.</footer>

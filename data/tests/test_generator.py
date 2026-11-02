@@ -2,7 +2,7 @@ import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from smartspend_data import budget_rows, generate_day, generate_range
+from smartspend_data import account_rows, budget_rows, generate_day, generate_range
 from smartspend_data.catalog import CATEGORIES
 
 SCHEMAS = Path(__file__).resolve().parents[2] / "infra" / "terraform" / "schemas"
@@ -35,6 +35,7 @@ def test_rows_match_bigquery_schema():
                 if f["mode"] == "REQUIRED":
                     assert row[name] is not None, name
     assert set(budget_rows(date(2026, 1, 1))[0]) == set(_fields("budgets"))
+    assert set(account_rows(NOW)[0]) == set(_fields("accounts"))
 
 
 def test_categories_are_known_and_receipts_reconcile():

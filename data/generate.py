@@ -6,6 +6,7 @@
 Outputs (NDJSON, ready for `bq load` or load_bigquery.py):
     out/transactions.ndjson      bank-feed rows; the last N days are left uncategorized
     out/category_labels.ndjson   ground truth for measuring categorizer accuracy
+    out/accounts.ndjson          the two synthetic demo accounts
     out/budgets.ndjson
     out/receipts/<id>.jpg        receipt photos, plus <id>.json with the true parse
 """
@@ -18,7 +19,7 @@ from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from smartspend_data import budget_rows, generate_range
+from smartspend_data import account_rows, budget_rows, generate_range
 from smartspend_data.receipts import render
 
 
@@ -46,6 +47,9 @@ def main() -> None:
     with open(out / "category_labels.ndjson", "w", encoding="utf-8") as f:
         for t in txns:
             f.write(json.dumps(t.label_row()) + "\n")
+    with open(out / "accounts.ndjson", "w", encoding="utf-8") as f:
+        for r in account_rows(now):
+            f.write(json.dumps(r) + "\n")
     with open(out / "budgets.ndjson", "w", encoding="utf-8") as f:
         for b in budget_rows(start):
             f.write(json.dumps(b) + "\n")

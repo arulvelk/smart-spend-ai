@@ -37,7 +37,8 @@ class Warehouse(Protocol):
     def top_merchants(self, start: date, end: date, category: str | None = None, limit: int = 5) -> list[dict]: ...
     def merchant_spend(self, merchant: str, start: date, end: date) -> list[dict]: ...
     def budget_status(self) -> list[dict]: ...
-    def transactions(self, start: date, end: date, category: str | None = None, limit: int = 100) -> list[dict]: ...
+    def transactions(self, start: date, end: date, category: str | None = None, limit: int = 100,
+                     account_id: str | None = None) -> list[dict]: ...
     def uncategorized(self, limit: int) -> list[dict]: ...
     def apply_categories(self, updates: list[CategoryUpdate]) -> int: ...
     def categorization_accuracy(self) -> dict: ...
@@ -45,6 +46,16 @@ class Warehouse(Protocol):
     def insert_receipt(self, row: dict) -> None: ...
     def tag_transaction(self, transaction_id: str, merchant: str, category: str) -> None: ...
     def alerts(self, limit: int = 20) -> list[dict]: ...
+    def accounts(self) -> list[dict]: ...
+    def create_account(self, row: dict) -> None: ...
+    def insert_transactions(self, rows: list[dict]) -> int: ...
+    def existing_ids(self, ids: list[str]) -> set[str]: ...
+    def set_category(self, transaction_id: str, category: str) -> int: ...
+    def record_import(self, row: dict) -> None: ...
+    def imports(self, limit: int = 20) -> list[dict]: ...
+    def undo_import(self, import_id: str) -> int: ...
+    def receipt(self, receipt_id: str) -> dict | None: ...
+    def link_receipt(self, receipt_id: str, transaction_id: str) -> None: ...
 
 
 class BigQueryWarehouse:
@@ -119,15 +130,16 @@ class BigQueryWarehouse:
                 WHERE user_id = @user_id ORDER BY pct_used DESC"""
         )
 
-    def transactions(self, start, end, category=None, limit=100):
+    def transactions(self, start, end, category=None, limit=100, account_id=None):
         return self._q(
-            f"""SELECT transaction_id, txn_date, raw_description, merchant_name, amount, direction,
-                       category, category_source, category_confidence
+            f"""SELECT transaction_id, account_id, txn_date, raw_description, merchant_name, amount, direction,
+                       category, category_source, category_confidence, source
                 FROM {self.table('transactions')}
                 WHERE user_id = @user_id AND txn_date BETWEEN @start AND @end
                   AND (@category = '' OR category = @category)
-                ORDER BY txn_date DESC, posted_at DESC LIMIT @limit""",
-            start=start, end=end, category=category or "", limit=limit,
+                  AND (@account = '' OR account_id = @account)
+                ORDER BY txn_date DESC, ingested_at DESC LIMIT @limit""",
+            start=start, end=end, category=category or "", account=account_id or "", limit=limit,
         )
 
     def alerts(self, limit=20):
@@ -221,6 +233,123 @@ class BigQueryWarehouse:
                 SET merchant_name = @merchant, category = @category, category_source = 'receipt', category_confidence = 1.0
                 WHERE transaction_id = @tid AND user_id = @user_id""",
             merchant=merchant, category=category, tid=transaction_id,
+        )
+
+
+    # -- accounts and your own data --------------------------------------
+    def accounts(self):
+        return self._q(
+            f"""SELECT a.account_id, a.name, a.type, a.institution, a.last4, a.is_demo,
+                       COUNT(t.transaction_id) AS txns, MAX(t.txn_date) AS last_txn_date
+                FROM {self.table('accounts')} a
+                LEFT JOIN {self.table('transactions')} t
+                  ON t.account_id = a.account_id AND t.user_id = a.user_id
+                WHERE a.user_id = @user_id
+                GROUP BY 1, 2, 3, 4, 5, 6
+                ORDER BY a.is_demo, a.name"""
+        )
+
+    def create_account(self, row):
+        self._load("accounts", [row])
+
+    def _load(self, table: str, rows: list[dict]) -> None:
+        """Append with a load job: free, and rows are visible to DML immediately."""
+        bq = self._bq
+        schema = self.client.get_table(f"{self.project}.{self.dataset}.{table}").schema
+        self.client.load_table_from_json(
+            rows, f"{self.project}.{self.dataset}.{table}",
+            job_config=bq.LoadJobConfig(schema=schema, write_disposition=bq.WriteDisposition.WRITE_APPEND),
+        ).result()
+
+    def insert_transactions(self, rows):
+        """Insert rows whose transaction_id isn't there yet (idempotent)."""
+        if not rows:
+            return 0
+        import uuid
+        from datetime import timedelta
+
+        bq = self._bq
+        target = f"{self.project}.{self.dataset}.transactions"
+        schema = self.client.get_table(target).schema
+        staging = f"{self.project}.{self.dataset}._staging_api_{uuid.uuid4().hex[:8]}"
+        tmp = bq.Table(staging, schema=schema)
+        tmp.expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        self.client.create_table(tmp)
+        try:
+            self.client.load_table_from_json(rows, staging, job_config=bq.LoadJobConfig(schema=schema)).result()
+            cols = ", ".join(f.name for f in schema)
+            job = self.client.query(
+                f"""MERGE `{target}` t USING `{staging}` s ON t.transaction_id = s.transaction_id
+                    WHEN NOT MATCHED THEN INSERT ({cols}) VALUES ({cols})""")
+            job.result()
+            return job.num_dml_affected_rows or 0
+        finally:
+            self.client.delete_table(staging, not_found_ok=True)
+
+    def existing_ids(self, ids):
+        if not ids:
+            return set()
+        bq = self._bq
+        rows = self._q(
+            f"""SELECT transaction_id FROM {self.table('transactions')}
+                WHERE user_id = @user_id AND transaction_id IN UNNEST(@ids)""",
+            ids=bq.ArrayQueryParameter("ids", "STRING", ids),
+        )
+        return {r["transaction_id"] for r in rows}
+
+    def set_category(self, transaction_id, category):
+        job = self.client.query(
+            f"""UPDATE {self.table('transactions')}
+                SET category = @category, category_source = 'user', category_confidence = 1.0
+                WHERE transaction_id = @tid AND user_id = @user_id""",
+            job_config=self._bq.QueryJobConfig(query_parameters=[
+                self._bq.ScalarQueryParameter("category", "STRING", category),
+                self._bq.ScalarQueryParameter("tid", "STRING", transaction_id),
+                self._bq.ScalarQueryParameter("user_id", "STRING", self.user_id),
+            ]),
+        )
+        job.result()
+        return job.num_dml_affected_rows or 0
+
+    def record_import(self, row):
+        self._load("imports", [row])
+
+    def imports(self, limit=20):
+        return self._q(
+            f"""SELECT i.import_id, i.account_id, a.name AS account_name, i.filename, i.format, i.parser,
+                       i.rows_parsed, i.rows_inserted, i.rows_skipped, i.status, i.created_at
+                FROM {self.table('imports')} i
+                LEFT JOIN {self.table('accounts')} a USING (account_id)
+                WHERE i.user_id = @user_id ORDER BY i.created_at DESC LIMIT @limit""",
+            limit=limit,
+        )
+
+    def undo_import(self, import_id):
+        bq = self._bq
+        params = [bq.ScalarQueryParameter("iid", "STRING", import_id),
+                  bq.ScalarQueryParameter("user_id", "STRING", self.user_id)]
+        job = self.client.query(
+            f"DELETE FROM {self.table('transactions')} WHERE import_id = @iid AND user_id = @user_id",
+            job_config=bq.QueryJobConfig(query_parameters=params))
+        job.result()
+        self.client.query(
+            f"UPDATE {self.table('imports')} SET status = 'undone' WHERE import_id = @iid AND user_id = @user_id",
+            job_config=bq.QueryJobConfig(query_parameters=params)).result()
+        return job.num_dml_affected_rows or 0
+
+    def receipt(self, receipt_id):
+        rows = self._q(
+            f"""SELECT receipt_id, merchant_name, receipt_date, total, category, matched_transaction_id
+                FROM {self.table('receipts')} WHERE receipt_id = @rid AND user_id = @user_id""",
+            rid=receipt_id,
+        )
+        return rows[0] if rows else None
+
+    def link_receipt(self, receipt_id, transaction_id):
+        self._q(
+            f"""UPDATE {self.table('receipts')} SET matched_transaction_id = @tid
+                WHERE receipt_id = @rid AND user_id = @user_id""",
+            tid=transaction_id, rid=receipt_id,
         )
 
 

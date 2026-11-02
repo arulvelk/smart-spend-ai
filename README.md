@@ -7,7 +7,7 @@ A personal budgeting and financial-advisor app built serverless and cloud-native
 - **BigQuery** is the financial data warehouse for transactions, receipts, budgets, and alerts, and it runs the analytics SQL.
 - **Cloud Scheduler + Cloud Functions** run the daily transaction ingest and send proactive budget alerts.
 
-All data is **synthetic**. A deterministic generator produces 12 months of realistic, messy transactions and receipt photos.
+The demo runs on **synthetic** data: a deterministic generator produces 12 months of realistic, messy transactions and receipt photos. You can also add your own: multiple cards and accounts, transactions typed in by hand, and **credit card statements** (CSV read with rules, PDF read by Gemini) that you review row by row before they're imported.
 
 > **Demo video:** _add link_ · **Live demo:** available on request (password-protected to protect the cloud budget)
 
@@ -40,6 +40,7 @@ The browser reaches only the public UI. The UI calls the **private** API with a 
 | Categorization is **batched** (40 per call) and measured against ground-truth labels | Low cost; accuracy is a regression check you can rerun after any prompt or model change |
 | Receipts get an **independent arithmetic check** and are matched to a card transaction | The model's extraction is verified, not trusted |
 | Writes use **load jobs + `MERGE`** on `transaction_id` | Free, idempotent re-runs; no streaming-buffer limits on DML |
+| Statements are **previewed before import**, deduped by deterministic row IDs, and every import can be undone | Rules first for CSVs (free, exact), Gemini only for PDFs and unknown layouts; nothing an LLM read is saved without a human seeing it |
 | Alerts are **pace-based** and fire once per category per month | Useful early in the month, never noisy |
 | API and agent in **one private Cloud Run service** that scales 0 to 2 | Zero idle cost and a hard ceiling on spend |
 | **Five least-privilege service accounts** and dataset-level BigQuery access | Each identity can do exactly one job |
@@ -47,7 +48,7 @@ The browser reaches only the public UI. The UI calls the **private** API with a 
 ## Results
 
 - Gemini categorized all 73 of the recent, uncategorized synthetic transactions correctly (mean confidence 0.97). The synthetic descriptors are cleaner than real bank data, so treat this as a regression baseline.
-- 30 Python tests (agent, API, daily job and data generator) run with in-memory fakes and need no GCP access.
+- 39 Python tests (agent, API, daily job and data generator) run with in-memory fakes and need no GCP access.
 - Idle cost is $0: every runtime scales to zero, with a $50/month billing alert.
 
 ## Repository layout
