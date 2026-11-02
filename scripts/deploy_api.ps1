@@ -55,7 +55,7 @@ if ($SkipSmokeTest) { return }
 
 Write-Host "==> Smoke test (authenticated with your gcloud identity)"
 $Headers = @{ Authorization = "Bearer $(gcloud auth print-identity-token)" }
-Invoke-RestMethod "$Url/healthz" -Headers $Headers | ConvertTo-Json
+Invoke-RestMethod "$Url/health" -Headers $Headers | ConvertTo-Json
 Write-Host "--> Categorizing pending transactions with Gemini"
 Invoke-RestMethod "$Url/categorize?limit=200" -Method Post -Headers $Headers | ConvertTo-Json -Depth 4
 Write-Host "--> Categorizer accuracy vs. ground truth"

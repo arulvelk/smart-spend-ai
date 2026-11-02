@@ -106,8 +106,9 @@ def _range(month: Optional[str], s: Settings) -> tuple[date, date]:
 
 
 # ---------------------------------------------------------------- endpoints
-@app.get("/healthz", tags=["ops"])
-def healthz(svc: Services = Depends(services)):
+# Not /healthz: Cloud Run's front end reserves URL paths ending in "z" and returns its own 404.
+@app.get("/health", tags=["ops"])
+def health(svc: Services = Depends(services)):
     return {"ok": True, "model": svc.settings.gemini_model, "dataset": svc.settings.dataset, "today": svc.settings.today}
 
 

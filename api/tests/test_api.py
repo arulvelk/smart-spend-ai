@@ -27,8 +27,8 @@ def client():
     del app.state.services
 
 
-def test_healthz(client):
-    assert client.get("/healthz").json()["ok"] is True
+def test_health(client):
+    assert client.get("/health").json()["ok"] is True
 
 
 def test_month_range(client):

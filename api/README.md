@@ -4,7 +4,7 @@ One Cloud Run service hosts the REST API and the LangGraph agent (`../agent`). I
 
 | Method | Path | What it does |
 |---|---|---|
-| GET | `/healthz` | Liveness, model and dataset in use |
+| GET | `/health` | Liveness, model and dataset in use |
 | GET | `/transactions?month=YYYY-MM&category=` | Transactions for a month |
 | GET | `/analytics/categories?month=YYYY-MM` | Spend by category and top merchants |
 | GET | `/analytics/monthly?category=` | 12-month spend trend |
