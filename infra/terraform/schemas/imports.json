@@ -1,0 +1,14 @@
+[
+  {"name": "import_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "user_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "account_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "filename", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "gcs_uri", "type": "STRING", "mode": "REQUIRED", "description": "Original statement file"},
+  {"name": "format", "type": "STRING", "mode": "REQUIRED", "description": "csv or pdf"},
+  {"name": "parser", "type": "STRING", "mode": "REQUIRED", "description": "csv-rules or the Gemini model that read the file"},
+  {"name": "rows_parsed", "type": "INTEGER", "mode": "REQUIRED"},
+  {"name": "rows_inserted", "type": "INTEGER", "mode": "REQUIRED"},
+  {"name": "rows_skipped", "type": "INTEGER", "mode": "REQUIRED", "description": "Duplicates already in BigQuery or rows the user unticked"},
+  {"name": "status", "type": "STRING", "mode": "REQUIRED", "description": "imported or undone"},
+  {"name": "created_at", "type": "TIMESTAMP", "mode": "REQUIRED"}
+]

@@ -21,6 +21,22 @@ resource "google_bigquery_table" "transactions" {
   }
 }
 
+resource "google_bigquery_table" "accounts" {
+  dataset_id          = google_bigquery_dataset.smartspend.dataset_id
+  table_id            = "accounts"
+  description         = "Bank accounts and cards. Demo accounts are fed by the daily synthetic job."
+  schema              = file("${path.module}/schemas/accounts.json")
+  deletion_protection = var.deletion_protection
+}
+
+resource "google_bigquery_table" "imports" {
+  dataset_id          = google_bigquery_dataset.smartspend.dataset_id
+  table_id            = "imports"
+  description         = "Statement uploads (CSV or PDF) and what each one added."
+  schema              = file("${path.module}/schemas/imports.json")
+  deletion_protection = var.deletion_protection
+}
+
 resource "google_bigquery_table" "category_labels" {
   dataset_id          = google_bigquery_dataset.smartspend.dataset_id
   table_id            = "category_labels"

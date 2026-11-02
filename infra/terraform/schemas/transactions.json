@@ -11,8 +11,9 @@
   {"name": "currency", "type": "STRING", "mode": "REQUIRED"},
   {"name": "channel", "type": "STRING", "mode": "NULLABLE", "description": "card, ach, transfer, atm"},
   {"name": "category", "type": "STRING", "mode": "NULLABLE", "description": "Spending category, filled by the categorizer"},
-  {"name": "category_source", "type": "STRING", "mode": "NULLABLE", "description": "rule, gemini or user"},
+  {"name": "category_source", "type": "STRING", "mode": "NULLABLE", "description": "seed, gemini, receipt or user"},
   {"name": "category_confidence", "type": "FLOAT", "mode": "NULLABLE"},
-  {"name": "source", "type": "STRING", "mode": "REQUIRED", "description": "backfill, daily_feed or receipt"},
-  {"name": "ingested_at", "type": "TIMESTAMP", "mode": "REQUIRED"}
+  {"name": "source", "type": "STRING", "mode": "REQUIRED", "description": "backfill, daily_feed (synthetic demo accounts), manual, statement or receipt"},
+  {"name": "ingested_at", "type": "TIMESTAMP", "mode": "REQUIRED"},
+  {"name": "import_id", "type": "STRING", "mode": "NULLABLE", "description": "Statement import that created this row (for undo)"}
 ]

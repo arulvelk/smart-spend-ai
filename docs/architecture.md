@@ -17,7 +17,9 @@ flowchart LR
 
 | Object | Kind | Purpose |
 |---|---|---|
-| `transactions` | table, monthly partitions on `txn_date`, clustered by `user_id, category` | Bank feed. `category`, `merchant_name`, `category_source`, `category_confidence` are filled by Gemini |
+| `transactions` | table, monthly partitions on `txn_date`, clustered by `user_id, category` | Every transaction, whatever its `source`: `backfill`/`daily_feed` (synthetic), `manual`, `statement`, `receipt`. `category`, `merchant_name`, `category_source`, `category_confidence` are filled by Gemini |
+| `accounts` | table | Cards and bank accounts. The synthetic ones are marked `is_demo` |
+| `imports` | table | One row per statement import: file in GCS, parser used, rows added and skipped, status. `transactions.import_id` points here so an import can be undone |
 | `receipts` | table, nested `line_items` | Gemini multimodal parse of uploaded receipts, matched to a transaction |
 | `budgets` | table | Monthly limit per category, versioned by `effective_from` |
 | `alerts` | table, daily partitions | Proactive alerts from the scheduled job |

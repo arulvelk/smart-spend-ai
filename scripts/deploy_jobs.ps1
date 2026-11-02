@@ -69,8 +69,10 @@ $schedulerArgs = @("--project", $ProjectId, "--location", $Region, "--schedule",
     "--oidc-token-audience", $FnUrl, "--attempt-deadline", "320s")
 # `list` instead of `describe`: Windows PowerShell treats a native command's stderr as a
 # terminating error under $ErrorActionPreference = "Stop", so a "not found" would abort the script.
+# Depending on the gcloud version, `name` is either the full resource path or the bare job ID,
+# so compare only the last path segment.
 $existing = gcloud scheduler jobs list --project $ProjectId --location $Region --format "value(name)" |
-    Where-Object { $_ -like "*/jobs/$Fn" }
+    Where-Object { ("$_".Trim() -split "/")[-1] -eq $Fn }
 if ($existing) {
     Invoke-Step { gcloud scheduler jobs update http $Fn @schedulerArgs }
 } else {

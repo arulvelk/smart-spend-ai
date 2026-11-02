@@ -1,0 +1,10 @@
+[
+  {"name": "account_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "user_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "name", "type": "STRING", "mode": "REQUIRED", "description": "Display name, e.g. 'Chase Sapphire'"},
+  {"name": "type", "type": "STRING", "mode": "REQUIRED", "description": "checking, savings, credit_card or cash"},
+  {"name": "institution", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "last4", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "is_demo", "type": "BOOLEAN", "mode": "REQUIRED", "description": "Synthetic demo account fed by the daily job"},
+  {"name": "created_at", "type": "TIMESTAMP", "mode": "REQUIRED"}
+]

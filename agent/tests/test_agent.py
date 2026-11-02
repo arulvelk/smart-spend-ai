@@ -77,3 +77,17 @@ def test_receipt_is_parsed_matched_and_stored():
 def test_receipt_arithmetic_check_catches_bad_extraction():
     bad = ReceiptParse.model_validate({**PIZZA_RECEIPT, "total": 99.0})
     assert bad.arithmetic_ok() is False
+
+
+def test_every_gemini_schema_converts_for_vertex():
+    """Vertex rejects some JSON-schema keywords (e.g. exclusiveMinimum from Field(gt=...))."""
+    from types import SimpleNamespace
+
+    from google.genai import _transformers as t
+
+    from smartspend_agent.categorizer import CategorizedBatch
+    from smartspend_agent.graph import Intent
+    from smartspend_agent.statements import StatementParse
+
+    for schema in (Intent, CategorizedBatch, ReceiptParse, StatementParse):
+        t.t_schema(SimpleNamespace(vertexai=True), schema)
