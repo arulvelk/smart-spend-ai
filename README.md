@@ -9,19 +9,58 @@ A personal budgeting and financial-advisor app built serverless and cloud-native
 
 All data is **synthetic**. A deterministic generator produces 12 months of realistic, messy transactions and receipt photos.
 
-See [docs/architecture.md](docs/architecture.md) for the diagram, data model, cost guardrails, and security notes.
+> **Demo video:** _add link_ · **Live demo:** available on request (password-protected to protect the cloud budget)
+
+<!-- Add a screenshot: save it as docs/screenshot.png -->
+<!-- ![SmartSpend AI dashboard](docs/screenshot.png) -->
+
+## Architecture
+
+```mermaid
+flowchart LR
+    user([User]) --> ui[Next.js UI<br/>Cloud Run, public]
+    ui -- "server-side proxy,<br/>ID token" --> api[FastAPI + LangGraph agent<br/>Cloud Run, private]
+    api -- "intent, categorization,<br/>receipt parsing" --> gemini[Gemini Flash<br/>Vertex AI]
+    api -- "SQL tools" --> bq[(BigQuery<br/>smartspend dataset)]
+    api -- "receipt photos" --> gcs[(Cloud Storage)]
+    sched[Cloud Scheduler<br/>daily 06:00] -- "OIDC token" --> job[smartspend-daily-job<br/>Cloud Function gen2]
+    job -- "MERGE new transactions,<br/>read v_budget_status, write alerts" --> bq
+    job -- "POST /categorize<br/>(ID token)" --> api
+    job --> pubsub[[Pub/Sub<br/>smartspend-alerts]]
+```
+
+The browser reaches only the public UI. The UI calls the **private** API with a Google-signed ID token minted for its own service account. Cloud Scheduler calls the daily function with OIDC. More detail, including the BigQuery model, cost guardrails and security, is in [docs/architecture.md](docs/architecture.md).
+
+## Design decisions
+
+| Decision | Why |
+|---|---|
+| Gemini returns **structured output** validated by Pydantic and enums | Typed answers, no free-text parsing; invented IDs and invalid categories are rejected |
+| The agent **never writes SQL**: LangGraph classifies intent → fixed, parameterized BigQuery tools → grounded answer | Safe against prompt injection, testable, and every answer is traceable to the data used |
+| Categorization is **batched** (40 per call) and measured against ground-truth labels | Low cost; accuracy is a regression check you can rerun after any prompt or model change |
+| Receipts get an **independent arithmetic check** and are matched to a card transaction | The model's extraction is verified, not trusted |
+| Writes use **load jobs + `MERGE`** on `transaction_id` | Free, idempotent re-runs; no streaming-buffer limits on DML |
+| Alerts are **pace-based** and fire once per category per month | Useful early in the month, never noisy |
+| API and agent in **one private Cloud Run service** that scales 0 to 2 | Zero idle cost and a hard ceiling on spend |
+| **Five least-privilege service accounts** and dataset-level BigQuery access | Each identity can do exactly one job |
+
+## Results
+
+- Gemini categorized all 73 of the recent, uncategorized synthetic transactions correctly (mean confidence 0.97). The synthetic descriptors are cleaner than real bank data, so treat this as a regression baseline.
+- 30 Python tests (agent, API, daily job and data generator) run with in-memory fakes and need no GCP access.
+- Idle cost is $0: every runtime scales to zero, with a $50/month billing alert.
 
 ## Repository layout
 
-| Folder | What it contains | Status |
-|---|---|---|
-| `infra/terraform/` | APIs, BigQuery dataset, tables and views, GCS bucket, Artifact Registry, Pub/Sub, service accounts, billing budget | ✅ step 1 |
-| `data/` | Synthetic generator, receipt renderer, and BigQuery loader, with tests | ✅ step 1 |
-| `agent/` | LangGraph advisor agent: Gemini intent routing, BigQuery tools, categorizer, receipt parser | ✅ step 2 |
-| `api/` | FastAPI service on Cloud Run (also hosts the agent) | ✅ step 2 |
-| `ui/` | Next.js dashboard on Cloud Run, calling the private API through a server-side proxy | ✅ step 3 |
-| `functions/` | Daily Cloud Function run by Cloud Scheduler: ingest, categorize, budget alerts | ✅ step 3 |
-| `scripts/` | `bootstrap.ps1` (one-time setup), `deploy_api.ps1`, `deploy_jobs.ps1`, `deploy_ui.ps1` | ✅ |
+| Folder | What it contains |
+|---|---|
+| `infra/terraform/` | APIs, BigQuery dataset, tables and views, GCS bucket, Artifact Registry, Pub/Sub, service accounts, billing budget |
+| `data/` | Synthetic generator, receipt renderer, and BigQuery loader, with tests |
+| `agent/` | LangGraph advisor agent: Gemini intent routing, BigQuery tools, categorizer, receipt parser |
+| `api/` | FastAPI service on Cloud Run (also hosts the agent) |
+| `ui/` | Next.js dashboard on Cloud Run, calling the private API through a server-side proxy |
+| `functions/` | Daily Cloud Function run by Cloud Scheduler: ingest, categorize, budget alerts |
+| `scripts/` | `bootstrap.ps1` (one-time setup), `deploy_api.ps1`, `deploy_jobs.ps1`, `deploy_ui.ps1` |
 
 ## Prerequisites (Windows)
 
