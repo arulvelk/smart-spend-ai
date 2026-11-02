@@ -17,11 +17,11 @@ See [docs/architecture.md](docs/architecture.md) for the diagram, data model, co
 |---|---|---|
 | `infra/terraform/` | APIs, BigQuery dataset, tables and views, GCS bucket, Artifact Registry, Pub/Sub, service accounts, billing budget | ✅ step 1 |
 | `data/` | Synthetic generator, receipt renderer, and BigQuery loader, with tests | ✅ step 1 |
-| `agent/` | LangGraph advisor agent on Gemini | step 2 |
-| `api/` | FastAPI service on Cloud Run | step 2 |
+| `agent/` | LangGraph advisor agent: Gemini intent routing, BigQuery tools, categorizer, receipt parser | ✅ step 2 |
+| `api/` | FastAPI service on Cloud Run (also hosts the agent) | ✅ step 2 |
 | `ui/` | Next.js dashboard on Cloud Run | step 3 |
 | `functions/` | Daily ingest and budget-alert Cloud Functions | step 3 |
-| `scripts/` | `bootstrap.ps1`, which runs the one-time setup | ✅ step 1 |
+| `scripts/` | `bootstrap.ps1` (one-time setup) and `deploy_api.ps1` (build and deploy to Cloud Run) | ✅ |
 
 ## Prerequisites (Windows)
 
@@ -59,6 +59,19 @@ Open a new terminal after installing so PATH updates.
    ```sql
    SELECT * FROM smartspend.v_budget_status ORDER BY pct_used DESC;
    ```
+
+## Deploy the API and agent
+
+```powershell
+./scripts/bootstrap.ps1 -ProjectId $P -BillingAccount XXXXXX-XXXXXX-XXXXXX -SkipData  # apply infra changes only
+uv sync --all-packages
+uv run python -m smartspend_agent --project $P   # check that Gemini on Vertex AI answers
+./scripts/deploy_api.ps1 -ProjectId $P
+```
+
+`deploy_api.ps1` builds with Cloud Build, deploys a private Cloud Run service, categorizes the pending transactions, prints Gemini's accuracy against ground truth, and asks the advisor a question. See [api/README.md](api/README.md) for the endpoints and how to run the API locally.
+
+Run all Python tests with `uv run pytest`. They use fakes and need no GCP access.
 
 ## Working with the data locally
 

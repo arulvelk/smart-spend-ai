@@ -1,0 +1,6 @@
+# Upload only what the API image needs to Cloud Build.
+#!include:.dockerignore
+data/
+ui/
+docs/
+functions/

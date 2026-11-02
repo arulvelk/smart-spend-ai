@@ -4,12 +4,17 @@
 
 .EXAMPLE
   ./scripts/bootstrap.ps1 -ProjectId smartspend-ai-123456 -BillingAccount XXXXXX-XXXXXX-XXXXXX
+
+.EXAMPLE
+  # Apply infrastructure changes only; keep the data already in BigQuery.
+  ./scripts/bootstrap.ps1 -ProjectId smartspend-ai-123456 -BillingAccount XXXXXX-XXXXXX-XXXXXX -SkipData
 #>
 param(
     [Parameter(Mandatory = $true)][string]$ProjectId,
     [string]$BillingAccount = "",
     [string]$Region = "us-central1",
-    [int]$BudgetUsd = 50
+    [int]$BudgetUsd = 50,
+    [switch]$SkipData
 )
 $ErrorActionPreference = "Stop"
 
@@ -34,13 +39,19 @@ Invoke-Step { gcloud services enable cloudresourcemanager.googleapis.com service
 Invoke-Step { gcloud auth application-default set-quota-project $ProjectId }
 
 Write-Host "==> Terraform: APIs, BigQuery, bucket, Artifact Registry, service accounts, budget"
+# Saved (gitignored) so later `terraform apply` runs and deploy scripts reuse the same values.
+@"
+project_id         = "$ProjectId"
+region             = "$Region"
+billing_account_id = "$BillingAccount"
+budget_amount_usd  = $BudgetUsd
+"@ | Set-Content -Encoding ascii "$Root/infra/terraform/terraform.tfvars"
 Invoke-Step { terraform -chdir="$Root/infra/terraform" init -input=false }
-Invoke-Step {
-    terraform -chdir="$Root/infra/terraform" apply -auto-approve `
-        -var "project_id=$ProjectId" `
-        -var "region=$Region" `
-        -var "billing_account_id=$BillingAccount" `
-        -var "budget_amount_usd=$BudgetUsd"
+Invoke-Step { terraform -chdir="$Root/infra/terraform" apply -auto-approve -input=false }
+
+if ($SkipData) {
+    Write-Host "`nInfrastructure updated; data left as is (-SkipData)."
+    return
 }
 
 Write-Host "==> Generating synthetic data"

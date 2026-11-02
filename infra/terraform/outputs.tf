@@ -16,6 +16,7 @@ output "service_accounts" {
     ui        = google_service_account.ui.email
     jobs      = google_service_account.jobs.email
     scheduler = google_service_account.scheduler.email
+    build     = google_service_account.build.email
   }
 }
 

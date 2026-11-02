@@ -1,0 +1,11 @@
+# uv workspace for the Python services. `data/` is a standalone project (see data/pyproject.toml).
+[tool.uv.workspace]
+members = ["agent", "api"]
+exclude = ["data"]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[tool.pytest.ini_options]
+testpaths = ["agent/tests", "api/tests"]
+pythonpath = ["agent/tests"]

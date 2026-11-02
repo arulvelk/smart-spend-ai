@@ -64,3 +64,22 @@ resource "google_pubsub_topic_iam_member" "jobs_publish_alerts" {
   role   = "roles/pubsub.publisher"
   member = google_service_account.jobs.member
 }
+
+# Cloud Build runs as its own service account (new projects no longer get a
+# privileged default build identity). Used by scripts/deploy_*.ps1.
+resource "google_service_account" "build" {
+  account_id   = "smartspend-build"
+  display_name = "SmartSpend Cloud Build"
+  depends_on   = [google_project_service.enabled]
+}
+
+resource "google_project_iam_member" "build_roles" {
+  for_each = toset([
+    "roles/artifactregistry.writer", # push images
+    "roles/logging.logWriter",       # build logs
+    "roles/storage.objectViewer",    # read uploaded source from the build bucket
+  ])
+  project = var.project_id
+  role    = each.value
+  member  = google_service_account.build.member
+}
