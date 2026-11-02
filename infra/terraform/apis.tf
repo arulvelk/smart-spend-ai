@@ -12,6 +12,8 @@ locals {
     "pubsub.googleapis.com",           # alert fan-out
     "secretmanager.googleapis.com",    # app secrets
     "iam.googleapis.com",
+    "cloudresourcemanager.googleapis.com", # project lookups (also pre-enabled by bootstrap.ps1)
+    "serviceusage.googleapis.com",
     "logging.googleapis.com",
     "billingbudgets.googleapis.com",
   ]

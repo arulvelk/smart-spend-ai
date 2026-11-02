@@ -12,6 +12,12 @@ param(
     [int]$BudgetUsd = 50
 )
 $ErrorActionPreference = "Stop"
+
+# Native commands (gcloud, terraform, uv) don't throw on failure; stop on non-zero exit codes.
+function Invoke-Step([scriptblock]$Cmd) {
+    & $Cmd
+    if ($LASTEXITCODE -ne 0) { throw "Command failed with exit code ${LASTEXITCODE}: $Cmd" }
+}
 $Root = Split-Path -Parent $PSScriptRoot
 
 foreach ($tool in "gcloud", "terraform", "uv") {
@@ -21,24 +27,29 @@ foreach ($tool in "gcloud", "terraform", "uv") {
 }
 
 Write-Host "==> Pointing gcloud and Application Default Credentials at $ProjectId"
-gcloud config set project $ProjectId
-gcloud auth application-default set-quota-project $ProjectId
+Invoke-Step { gcloud config set project $ProjectId }
+
+Write-Host "==> Enabling the APIs Terraform itself needs (new projects start with these off)"
+Invoke-Step { gcloud services enable cloudresourcemanager.googleapis.com serviceusage.googleapis.com billingbudgets.googleapis.com --project $ProjectId }
+Invoke-Step { gcloud auth application-default set-quota-project $ProjectId }
 
 Write-Host "==> Terraform: APIs, BigQuery, bucket, Artifact Registry, service accounts, budget"
-terraform -chdir="$Root/infra/terraform" init -input=false
-terraform -chdir="$Root/infra/terraform" apply -auto-approve `
-    -var "project_id=$ProjectId" `
-    -var "region=$Region" `
-    -var "billing_account_id=$BillingAccount" `
-    -var "budget_amount_usd=$BudgetUsd"
+Invoke-Step { terraform -chdir="$Root/infra/terraform" init -input=false }
+Invoke-Step {
+    terraform -chdir="$Root/infra/terraform" apply -auto-approve `
+        -var "project_id=$ProjectId" `
+        -var "region=$Region" `
+        -var "billing_account_id=$BillingAccount" `
+        -var "budget_amount_usd=$BudgetUsd"
+}
 
 Write-Host "==> Generating synthetic data"
 Push-Location "$Root/data"
 try {
-    uv sync
-    uv run python generate.py
+    Invoke-Step { uv sync }
+    Invoke-Step { uv run python generate.py }
     Write-Host "==> Loading BigQuery and uploading sample receipts"
-    uv run python load_bigquery.py --project $ProjectId
+    Invoke-Step { uv run python load_bigquery.py --project $ProjectId }
 } finally {
     Pop-Location
 }
